@@ -35,8 +35,8 @@ async function initTables() {
   let connection;
   try {
     connection = await getConn();
-    const sql = `
-      CREATE TABLE IF NOT EXISTS entertainers (
+    const statements = [
+      `CREATE TABLE IF NOT EXISTS entertainers (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         status ENUM('in_building','ready_for_stage','off') DEFAULT 'in_building',
@@ -47,8 +47,8 @@ async function initTables() {
         created_by_id VARCHAR(255) DEFAULT NULL,
         created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS room_entries (
+      )`,
+      `CREATE TABLE IF NOT EXISTS room_entries (
         id INT AUTO_INCREMENT PRIMARY KEY,
         room_type ENUM('champagne','platinum','diamond','half_champagne','half_platinum','half_diamond','teasers','platinum_suite','couch','promo','three_for_75') DEFAULT 'champagne',
         qty INT DEFAULT 1,
@@ -58,8 +58,8 @@ async function initTables() {
         created_by_id VARCHAR(255) DEFAULT NULL,
         created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS room_prices (
+      )`,
+      `CREATE TABLE IF NOT EXISTS room_prices (
         id INT AUTO_INCREMENT PRIMARY KEY,
         room_type ENUM('champagne','platinum','diamond','half_champagne','half_platinum','half_diamond','teasers','platinum_suite','couch','promo','three_for_75') DEFAULT 'champagne',
         default_fee DECIMAL(10,2) DEFAULT 0,
@@ -67,8 +67,8 @@ async function initTables() {
         created_by_id VARCHAR(255) DEFAULT NULL,
         created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS transactions (
+      )`,
+      `CREATE TABLE IF NOT EXISTS transactions (
         id INT AUTO_INCREMENT PRIMARY KEY,
         entertainer_id VARCHAR(255) NOT NULL,
         entertainer_name VARCHAR(255) DEFAULT '',
@@ -79,9 +79,11 @@ async function initTables() {
         created_by_id VARCHAR(255) DEFAULT NULL,
         created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      );
-    `;
-    await connection.query(sql);
+      )`
+    ];
+    for (const stmt of statements) {
+      await connection.query(stmt);
+    }
     console.log('All tables initialized successfully');
   } catch (err) {
     console.error('Table init error:', err.message);

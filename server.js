@@ -31,6 +31,65 @@ async function getConn() {
   });
 }
 
+async function initTables() {
+  let connection;
+  try {
+    connection = await getConn();
+    const sql = `
+      CREATE TABLE IF NOT EXISTS entertainers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        status ENUM('in_building','ready_for_stage','off') DEFAULT 'in_building',
+        license_fee DECIMAL(10,2) DEFAULT 0,
+        license_fee_paid DECIMAL(10,2) DEFAULT 0,
+        contract_terminated BOOLEAN DEFAULT FALSE,
+        termination_reason TEXT DEFAULT '',
+        created_by_id VARCHAR(255) DEFAULT NULL,
+        created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS room_entries (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        room_type ENUM('champagne','platinum','diamond','half_champagne','half_platinum','half_diamond','teasers','platinum_suite','couch','promo','three_for_75') DEFAULT 'champagne',
+        qty INT DEFAULT 1,
+        fee DECIMAL(10,2) DEFAULT 0,
+        paid BOOLEAN DEFAULT FALSE,
+        entertainer_name VARCHAR(255) DEFAULT '',
+        created_by_id VARCHAR(255) DEFAULT NULL,
+        created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS room_prices (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        room_type ENUM('champagne','platinum','diamond','half_champagne','half_platinum','half_diamond','teasers','platinum_suite','couch','promo','three_for_75') DEFAULT 'champagne',
+        default_fee DECIMAL(10,2) DEFAULT 0,
+        default_qty INT DEFAULT 1,
+        created_by_id VARCHAR(255) DEFAULT NULL,
+        created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS transactions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        entertainer_id VARCHAR(255) NOT NULL,
+        entertainer_name VARCHAR(255) DEFAULT '',
+        amount DECIMAL(10,2) DEFAULT 0,
+        source_type ENUM('license_fee','room','tip','other') DEFAULT 'room',
+        room_type ENUM('champagne','platinum','diamond','half_champagne','half_platinum','half_diamond','teasers','platinum_suite','couch','promo','three_for_75') DEFAULT 'champagne',
+        description TEXT DEFAULT '',
+        created_by_id VARCHAR(255) DEFAULT NULL,
+        created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+    `;
+    await connection.query(sql);
+    console.log('All tables initialized successfully');
+  } catch (err) {
+    console.error('Table init error:', err.message);
+  } finally {
+    if (connection) await connection.end();
+  }
+}
+
 app.get('/api/ip', async (req, res) => {
   try {
     const response = await fetch('https://api.ipify.org?format=json');
@@ -139,4 +198,7 @@ app.delete('/api/:entity/:id', requireApiKey, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Server running on port ${PORT}`);
+  await initTables();
+});

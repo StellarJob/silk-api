@@ -102,12 +102,58 @@ app.get('/api/ip', async (req, res) => {
   }
 });
 
-app.get('/api/stats', requireApiKey, async (req, res) => {
+app.get('/api/performance-stats', requireApiKey, async (req, res) => {
   let connection;
   try {
     connection = await getConn();
-    const [rows] = await connection.execute('SELECT 1 AS test');
-    res.json({ status: 'connected', result: rows });
+    const [rows] = await connection.query('SELECT * FROM tblTraxItStats ORDER BY PerformanceDate DESC, Location');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
+app.get('/api/terminated-contracts', requireApiKey, async (req, res) => {
+  let connection;
+  try {
+    connection = await getConn();
+    const [rows] = await connection.query('SELECT * FROM tblTerminatedContracts ORDER BY TerminatedDate DESC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
+app.get('/api/diagnostic/tables', requireApiKey, async (req, res) => {
+  let connection;
+  try {
+    connection = await getConn();
+    const [tables] = await connection.query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?", [process.env.DB_NAME]);
+    const result = {};
+    for (const { TABLE_NAME } of tables) {
+      const [cols] = await connection.query("SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION", [process.env.DB_NAME, TABLE_NAME]);
+      const [count] = await connection.query(`SELECT COUNT(*) as cnt FROM \`${TABLE_NAME}\``);
+      result[TABLE_NAME] = { columns: cols, rowCount: count[0].cnt };
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
+app.get('/api/diagnostic/rows', requireApiKey, async (req, res) => {
+  let connection;
+  try {
+    connection = await getConn();
+    const [stats] = await connection.query('SELECT * FROM tblTraxItStats ORDER BY PerformanceDate DESC LIMIT 10');
+    const [terminated] = await connection.query('SELECT * FROM tblTerminatedContracts ORDER BY TerminatedDate DESC LIMIT 10');
+    res.json({ tblTraxItStats: stats, tblTerminatedContracts: terminated });
   } catch (err) {
     res.status(500).json({ error: err.message });
   } finally {
@@ -199,60 +245,7 @@ app.delete('/api/:entity/:id', requireApiKey, async (req, res) => {
     if (connection) await connection.end();
   }
 });
-app.get('/api/diagnostic/tables', requireApiKey, async (req, res) => {
-  let connection;
-  try {
-    connection = await getConn();
-    const [tables] = await connection.query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?", [process.env.DB_NAME]);
-    const result = {};
-    for (const { TABLE_NAME } of tables) {
-      const [cols] = await connection.query("SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION", [process.env.DB_NAME, TABLE_NAME]);
-      const [count] = await connection.query(`SELECT COUNT(*) as cnt FROM \`${TABLE_NAME}\``);
-      result[TABLE_NAME] = { columns: cols, rowCount: count[0].cnt };
-    }
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  } finally {
-    if (connection) await connection.end();
-  }
-}); app.get('/api/diagnostic/rows', requireApiKey, async (req, res) => {
-  let connection;
-  try {
-    connection = await getConn();
-    const [stats] = await connection.query('SELECT * FROM tblTraxItStats ORDER BY PerformanceDate DESC LIMIT 10');
-    const [terminated] = await connection.query('SELECT * FROM tblTerminatedContracts ORDER BY TerminatedDate DESC LIMIT 10');
-    res.json({ tblTraxItStats: stats, tblTerminatedContracts: terminated });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  } finally {
-    if (connection) await connection.end();
-  }
-}); app.get('/api/stats', requireApiKey, async (req, res) => {
-  let connection;
-  try {
-    connection = await getConn();
-    const [rows] = await connection.query('SELECT * FROM tblTraxItStats ORDER BY PerformanceDate DESC, Location');
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  } finally {
-    if (connection) await connection.end();
-  }
-});
 
-app.get('/api/terminated', requireApiKey, async (req, res) => {
-  let connection;
-  try {
-    connection = await getConn();
-    const [rows] = await connection.query('SELECT * FROM tblTerminatedContracts ORDER BY TerminatedDate DESC');
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  } finally {
-    if (connection) await connection.end();
-  }
-});
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   await initTables();

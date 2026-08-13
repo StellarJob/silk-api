@@ -216,6 +216,18 @@ app.get('/api/diagnostic/tables', requireApiKey, async (req, res) => {
   } finally {
     if (connection) await connection.end();
   }
+}); app.get('/api/diagnostic/rows', requireApiKey, async (req, res) => {
+  let connection;
+  try {
+    connection = await getConn();
+    const [stats] = await connection.query('SELECT * FROM tblTraxItStats ORDER BY PerformanceDate DESC LIMIT 10');
+    const [terminated] = await connection.query('SELECT * FROM tblTerminatedContracts ORDER BY TerminatedDate DESC LIMIT 10');
+    res.json({ tblTraxItStats: stats, tblTerminatedContracts: terminated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (connection) await connection.end();
+  }
 });
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
